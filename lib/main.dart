@@ -7,13 +7,16 @@ import 'package:tracker_location/auth/auth_state.dart';
 import 'package:tracker_location/firebase_options.dart';
 import 'package:tracker_location/services/azure_auth_service.dart';
 
+import 'screens/screens.dart';
+
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
 
-  runApp(const MyApp());
+  runApp(MyApp());
 }
 
 class MyApp extends StatelessWidget {
