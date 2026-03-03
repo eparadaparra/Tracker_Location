@@ -2,6 +2,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 class LocationService {
+  
   Future<void> ensurePermissions() async {
     // Notificaciones (para foreground service)
     await Permission.notification.request();
@@ -25,8 +26,10 @@ class LocationService {
   }
 
   Future<Position> getCurrentPosition() async {
-    return Geolocator.getCurrentPosition(
-      desiredAccuracy: LocationAccuracy.high,
+    return Geolocator.getCurrentPosition( 
+      locationSettings: LocationSettings(
+        accuracy: LocationAccuracy.high,
+      ) //desiredAccuracy: LocationAccuracy.high,
     );
   }
 }
