@@ -10,13 +10,13 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:tracker_location/firebase_options.dart';
 import 'package:tracker_location/models/location_ping.dart';
 import 'package:tracker_location/services/services.dart';
-
 import 'package:geoflutterfire_plus/geoflutterfire_plus.dart';
 
 final FlutterLocalNotificationsPlugin _notifications =
     FlutterLocalNotificationsPlugin();
 
 class BackgroundRunner {
+  
   static Future<void> initialize() async {
     const androidInit = AndroidInitializationSettings('@mipmap/ic_launcher');
     const initSettings = InitializationSettings(android: androidInit);
@@ -40,12 +40,7 @@ class BackgroundRunner {
     );
   }
 
-  /// Guarda uid/email para que el isolate de background los lea siempre,
-  /// incluso si Android reinicia el servicio.
-  static Future<void> persistUser({
-    required String uid,
-    required String email,
-  }) async {
+  static Future<void> persistUser({ required String uid, required String email}) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('tracker_uid', uid);
     await prefs.setString('tracker_email', email);
@@ -59,11 +54,13 @@ class BackgroundRunner {
   static Future<void> stop() async {
     FlutterBackgroundService().invoke("stopService");
   }
+
 }
 
 /// ✅ TOP-LEVEL + PRAGMA
 @pragma('vm:entry-point')
 Future<void> backgroundOnStart(ServiceInstance service) async {
+  
   WidgetsFlutterBinding.ensureInitialized();
   DartPluginRegistrant.ensureInitialized();
 
@@ -75,10 +72,9 @@ Future<void> backgroundOnStart(ServiceInstance service) async {
 
   final firestore = FirestoreService();
   final location = LocationService();
-
   // ✅ Lee uid/email desde SharedPreferences (ya NO usamos setUser)
   final prefs = await SharedPreferences.getInstance();
-  final uid = prefs.getString('tracker_uid');
+  final uid   = prefs.getString('tracker_uid');
   final email = prefs.getString('tracker_email');
 
   print('[BG] prefs uid=$uid email=$email');
@@ -92,17 +88,21 @@ Future<void> backgroundOnStart(ServiceInstance service) async {
   Future<void> sendPingOnce() async {
     try {
       final pos = await location.getCurrentPosition();
-      final geo = GeoFirePoint(GeoPoint(pos.latitude, pos.longitude));
+      final geo = GeoFirePoint(
+        GeoPoint(pos.latitude, pos.longitude)
+      );
+      final ping = LocationPing(
+        email: email,
+        userId: uid,
+        geolocation: Geolocation(
+          geohash: geo.geohash, 
+          geopoint: GeoPoint(pos.latitude, pos.longitude),
+        ),
+      );
 
       await firestore.savePing(
         uid: uid,
-        ping: LocationPing(
-          email: email,
-          userId: uid,
-          geohash: geo.geohash,
-          latitude: pos.latitude,
-          longitude: pos.longitude,
-        ),
+        ping: ping,
       );
 
       print('[BG] Ping guardado uid=$uid lat=${pos.latitude} lng=${pos.longitude}');
@@ -129,7 +129,7 @@ Future<void> backgroundOnStart(ServiceInstance service) async {
   // ✅ Loop dinámico
   while (true) {
     await sendPingOnce();
-    final mins = await firestore.getIntervalMinutes();
-    await Future.delayed(Duration(minutes: mins));
+    final secs = await firestore.getIntervalSeconds();
+    await Future.delayed( Duration(seconds: secs) );
   }
 }

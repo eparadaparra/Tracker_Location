@@ -4,15 +4,18 @@ import 'package:tracker_location/models/location_ping.dart';
 class FirestoreService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
 
-  Future<int> getIntervalMinutes() async {
-    final snap = await _db.collection('app_config').doc('default').get();
+  Future<int> getIntervalSeconds() async {
+    final snap = await _db.collection('settings').doc('location_config').get();
     final data = snap.data();
-    final minutes = (data?['intervalMinutes'] ?? 5);
-    return (minutes is int) ? minutes : (minutes as num).toInt();
+    
+    final raw = data?['intervalSeconds'] ?? 300;
+    final seconds = (raw is int) ? raw : (raw as num).toInt();
+    return (seconds < 30) ? 30 : seconds;
   }
 
   Future<void> savePing({required String uid, required LocationPing ping}) async {
     final now = DateTime.now().toUtc();
+    final day = now.toIso8601String().substring(0, 10); // YYYY-MM-DD (UTC)
     final pingId =
         '${now.year.toString().padLeft(4, '0')}${now.month.toString().padLeft(2, '0')}${now.day.toString().padLeft(2, '0')}_'
         '${now.hour.toString().padLeft(2, '0')}${now.minute.toString().padLeft(2, '0')}${now.second.toString().padLeft(2, '0')}_'
@@ -21,14 +24,17 @@ class FirestoreService {
     final doc = _db
       .collection('users')
       .doc(uid)
-      .collection('location_pings')
+      .collection('daily_tracks')
+      .doc(day)
+      .collection('pings')
       .doc(pingId);
+      //.collection('location_pings')
 
     await doc.set({
       ...ping.toMap(),
-      'geopoint': GeoPoint(ping.latitude, ping.longitude),
-      'day': DateTime.now().toIso8601String().substring(0, 10), // YYYY-MM-DD
       'timestamp': FieldValue.serverTimestamp(),
+      //'geopoint': ping.geolocation.geopoint,
+      //'day': DateTime.now().toIso8601String().substring(0, 10), // YYYY-MM-DD
     });
   }
 
